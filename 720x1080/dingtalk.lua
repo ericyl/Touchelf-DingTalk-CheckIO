@@ -1,6 +1,8 @@
 ﻿-- 脚本描述
 DESCRIPTION="触摸精灵-钉钉签到签退脚本 v1.2.0";
 --CHANGELOG
+-- v1.2.1
+--      修改获取工作位置的逻辑，工作位置获取不成功导致的打卡失败问题未找到原因，很玄学（等待多次测试）
 -- v1.2.0
 --      新增时令签退日期修改, (默认签退时间17:30)
 --      修改 Log 输出逻辑
@@ -25,7 +27,9 @@ checkOutTime = 1050;
 function main()
     --防黑屏，请将黑屏时间间隔调到最大：例如：30分钟
     clickBackBtn();
-    
+    --关闭钉钉不写入Log
+    killApp("com.alibaba.android.rimet");
+
     --使用网络时间【有问题】
     --time = getNetTime();
     --if time ~= -1 then
@@ -35,10 +39,10 @@ function main()
         --logDebug("请连接网络");
         --return;
     --end
-    
+
     --时令修改标记
     flag = true;
-    
+
     --使用本地时间
     --时间判断是否为夏时令
     localDate=((tonumber(os.date("%m")) or 1) * 100 + (tonumber(os.date("%d")) or 1));
@@ -54,7 +58,7 @@ function main()
         checkIn = doCheckIn(localTime);
         --log输出
         checkInMsg = "失败";
-        if checkIn then 
+        if checkIn then
             checkInMsg = "成功";
         end
         logDebug("--------------------------------");
@@ -66,7 +70,7 @@ function main()
         checkOut = doCheckOut(localTime);
         --log输出
         checkOutMsg = "失败";
-        if checkOut then 
+        if checkOut then
             checkOutMsg = "成功";
         end
         logDebug("--------------------------------");
@@ -124,22 +128,22 @@ function doCheckOut(localTime)
     mSleep(20 * 1000);
     logDebug("打开工作");
     --判断并打开工作。分两种图标，一种纯图标，一种带提示红点的图标。【根据手机分辨率大小，自行修改0, 1623, 1080, 1920参数】
-    workX, workY = findImageInRegionFuzzy("ic_work.bmp", 90, 0, 1080, 720, 1280, 0xF7F7F7);
-    workOtherX, workOtherY = findImageInRegionFuzzy("ic_work_other.bmp", 90, 0, 1080, 720, 1280, 0xF7F7F7);         
-    if workX ~= -1 and workY ~= -1 then  
+    workX, workY = findImageInRegionFuzzy("ic_work.bmp", 90, 0, 1623, 1080, 1920, 0xF7F7F7);
+    if workX == -1 and workY == -1 then
+        workX, workY = findImageInRegionFuzzy("ic_work_other.bmp", 90, 0, 1623, 1080, 1920, 0xF7F7F7);
+    end
+
+    if workX ~= -1 and workY ~= -1 then
         logDebug(string.format("匹配工作位置 %s, %s", workX, workY));
         touchDown(0, workX, workY);
         mSleep(100);
         touchUp(0);
-    elseif workOtherX ~= -1 and workOtherY ~= -1 then 
-        logDebug(string.format("匹配工作位置 %s, %s", workOtherX, workOtherY));
-        touchDown(0, workOtherX, workOtherY);
-        mSleep(100);
-        touchUp(0);
+        mSleep(20 * 1000);
     else
+        logDebug("匹配工作位置失败！");
         return false;
     end
-    mSleep(20 * 1000);
+
     logDebug("进入考勤打卡页面");
     --判断并打开考勤打卡。【根据手机分辨率大小，自行修改0, 1086, 1080, 1616参数】
     attendanceX, attendanceY = findImageInRegionFuzzy("ic_attendance.bmp", 90, 0, 100, 720, 1080, 0xFFFFFF);     

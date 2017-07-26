@@ -1,6 +1,8 @@
-﻿-- 脚本描述
-DESCRIPTION="触摸精灵-钉钉签到签退脚本 v1.2.1";
+-- 脚本描述
+DESCRIPTION="触摸精灵-钉钉签到签退脚本 v1.2.2";
 --CHANGELOG
+-- v1.2.2
+--      已增加点击进入工作通知界面，用于消除小红点【已确定工作位置获取不成功原因为小红点数字超过10后出现图标覆盖导致无法匹配】
 -- v1.2.1
 --      修改获取工作位置的逻辑，工作位置获取不成功导致的打卡失败问题未找到原因，很玄学（等待多次测试）
 -- v1.2.0
@@ -28,7 +30,7 @@ function main()
     --防黑屏，请将黑屏时间间隔调到最大：例如：30分钟
     clickBackBtn();
     --关闭钉钉不写入Log
-    killApp("com.alibaba.android.rimet");
+    --killApp("com.alibaba.android.rimet");
 
     --使用网络时间【有问题】
     --time = getNetTime();
@@ -126,6 +128,24 @@ function doCheckOut(localTime)
         return false;
     end
     mSleep(20 * 1000);
+
+    logDebug("打开工作通知");
+    --在首页匹配工作通知图标
+    mainWorkX, mainWorkY = findImageFuzzy("ic_main_work.bmp", 90, 0xFFFFFF);
+    --点击工作通知图标
+    if mainWorkX ~= -1 and mainWorkY ~= -1 then
+        logDebug(string.format("匹配工作通知界面位置 %s, %s", mainWorkX, mainWorkY));
+        touchDown(0, mainWorkX, mainWorkY);
+        mSleep(100);
+        touchUp(0);
+        mSleep(10 * 1000);
+        --回退到主页面
+        clickBackBtn();
+    else
+        logDebug("匹配工作通知界面位置失败！");
+    end
+    mSleep(20 * 1000);
+
     logDebug("打开工作");
     --判断并打开工作。分两种图标，一种纯图标，一种带提示红点的图标。【根据手机分辨率大小，自行修改0, 1623, 1080, 1920参数】
     workX, workY = findImageInRegionFuzzy("ic_work.bmp", 90, 0, 1623, 1080, 1920, 0xF7F7F7);
@@ -138,21 +158,21 @@ function doCheckOut(localTime)
         touchDown(0, workX, workY);
         mSleep(100);
         touchUp(0);
-        mSleep(20 * 1000);
     else
         logDebug("匹配工作位置失败！");
         return false;
     end
+    mSleep(20 * 1000);
 
     logDebug("进入考勤打卡页面");
     --判断并打开考勤打卡。【根据手机分辨率大小，自行修改0, 1086, 1080, 1616参数】
-    attendanceX, attendanceY = findImageInRegionFuzzy("ic_attendance.bmp", 90, 0, 100, 720, 1080, 0xFFFFFF);     
-    if attendanceX ~= -1 and attendanceY ~= -1 then  
+    attendanceX, attendanceY = findImageInRegionFuzzy("ic_attendance.bmp", 90, 0, 100, 720, 1080, 0xFFFFFF);
+    if attendanceX ~= -1 and attendanceY ~= -1 then
         logDebug(string.format("匹配考勤打卡位置 %s, %s", attendanceX, attendanceY));
         touchDown(0, attendanceX, attendanceY);
         mSleep(100);
         touchUp(0);
-    else 
+    else
         return false;
     end
     mSleep(20 * 1000);
@@ -162,8 +182,8 @@ function doCheckOut(localTime)
     while (i < 6)  do
         logDebug(string.format("尝试第 %d 次匹配图片位置", i));
         --【根据手机分辨率大小，自行修改0, 960, 1080, 1920参数】
-        checkOutX, checkOutY = findImageInRegionFuzzy("ic_check_out.bmp", 80, 0, 600, 720, 1080);         
-        if checkOutX ~= -1 and checkOutY ~= -1 then  
+        checkOutX, checkOutY = findImageInRegionFuzzy("ic_check_out.bmp", 80, 0, 600, 720, 1080);
+        if checkOutX ~= -1 and checkOutY ~= -1 then
             logDebug(string.format("匹配签退位置 %s, %s", checkOutX, checkOutY));
             touchDown(0, checkOutX + 150, checkOutY + 150);--【根据手机分辨率大小，自行修改150数值】
             mSleep(100);
@@ -184,7 +204,7 @@ function killDingTalk()
     logDebug("开始关闭钉钉!");
     killAppFlag = killApp("com.alibaba.android.rimet");
     killAppMsg = "失败";
-    if killAppFlag then 
+    if killAppFlag then
         killAppMsg = "成功";
     end
     logDebug(string.format("关闭钉钉 %s !", killAppMsg));
@@ -194,8 +214,8 @@ end
 --关闭App
 function killApp(appPackage)
     local i = 1;
-    while i < 20 do 
-        if appRunning(appPackage) then 
+    while i < 20 do
+        if appRunning(appPackage) then
             appKill(appPackage);
             mSleep(1000);
         else
@@ -211,7 +231,7 @@ function openDingTalk()
     logDebug("开始打开钉钉!");
     openAppFlag = openApp("com.alibaba.android.rimet");
     openAppMsg = "失败";
-    if openAppFlag then 
+    if openAppFlag then
         openAppMsg = "成功";
     end
     logDebug(string.format("打开钉钉 %s !", openAppMsg));
@@ -223,8 +243,8 @@ function openApp(appPackage)
     appRun(appPackage);
     mSleep(10 * 1000);
     local i = 1;
-    while i < 20 do 
-        if appRunning(appPackage) then 
+    while i < 20 do
+        if appRunning(appPackage) then
             return true;
         else
             appRun(appPackage);
@@ -250,5 +270,5 @@ end
 --App选择界面
 function clickAppSwitchBtn()
     mSleep(500);
-    os.execute("input keyevent 187"); --app switch      
+    os.execute("input keyevent 187"); --app switch
 end
